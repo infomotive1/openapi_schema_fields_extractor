@@ -1,0 +1,72 @@
+ components:
+
+  #Here are local schemas and examples that are specific to this API 
+  
+  schemas:
+    PremisesDetails:
+       type: object
+       description:  MARS data set 
+       required:
+        - Header
+        - Transactions
+       properties:     
+        Header:
+         type: object
+         description:  MARS Header data set         
+         required:
+            - MessageID
+            - TransactionsCount
+         properties:            
+            MessageID:
+              type: string
+              description: A unique identifier for transaction eg. business key, GUID etc            
+            TransactionsCount:
+              description: Number of transactions included in the XML document      
+              type: integer
+        Transactions:
+          type: object
+          description:  MARS Transactions data set           
+          required:
+            - Transaction        
+          properties:
+            Transaction:
+              type: array          
+              items:
+                meters:
+                  type: array
+                  items:
+                    type: string  
+                  description: List of current Meter Numbers for that NMI. For detailed info about Services/Meters/Tariffs/PriceOptions call Get Meter API.
+                  example: ['23423', 'M2423', '75675']
+                $ref: '#/components/schemas/Transaction'
+              minItems: 1
+    Transaction:
+       type: object
+       description:  Notifies of premises data changes in MARS or PEACE. 
+       required:
+        - AddressStructuredFlag        
+       properties:  
+          AddressStructured:
+            $ref: '#/components/schemas/AddressStructured'
+          AddressStructuredFlag:
+           type: string 
+           enum: [Y,N]          
+    AddressStructured: 
+       type: object
+       description:  Structured Address for MARS        
+       properties: 
+        BuildingOrPropertyName:
+          type: string        
+        StreetName:  
+          type: string            
+        StreetSuffix:  
+          type: string           
+        StreetType:  
+          type: string   
+        tariffs:
+          type: array
+          items:
+            type: string
+          description: List of current Tariffs for that NMI. For detailed info about Services/Meters/Tariffs/PriceOptions call Get Meter API.
+          example: ['8400', '7200', '9900']  
+             

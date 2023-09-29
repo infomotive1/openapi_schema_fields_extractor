@@ -1,0 +1,375 @@
+openapi: 3.0.0
+
+info:
+  version: "1.0.0"
+  title: TestFile3 API
+  description: >-
+      Some verbose description
+ 
+  termsOfService:  http://energyq.com.au
+  contact:
+    name: Doug
+    url: https://www.doug.au/contact-us
+    email: info@doug.au
+  license:
+    name: Apache 2.0
+    url: http://google.com
+
+servers:
+  # Added by API Auto Mocking Plugin
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/doug/communications/1.0.0
+    
+tags:
+  - name: communications
+    description: Support customer communications operations
+  - name: metadata
+    description: Service metadata related operations
+  - name: healthcheck
+    description: Service health related operations
+
+# Assumed our CMX APIs are configured as implicit OAuth2
+security:
+  - implicit:
+      - read
+      - write
+
+paths:
+
+# Operation
+# Common operation - service metadata 
+  /:
+    $ref: 'https://api.swaggerhub.com/domains/Doug/Common/1.0.0#/components/pathitems/metadata'
+
+# Operation 
+# Common operation - health check 
+  /ping:
+    $ref: 'https://api.swaggerhub.com/domains/Doug/Common/1.0.0#/components/pathitems/healthcheck'
+
+# Operation 
+
+          
+  /sms:    
+   post:
+    summary: Post operation to send SMS Messages.
+    description: Post operation to accept data to send templated SMS messages to multiple customers.
+    operationId: postSMSMessage
+    tags:
+        - communications
+    requestBody:
+        description: A JSON object containing item data
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PremisesDetails'
+           
+    parameters:
+        # header X-Doug-Route
+        - $ref: '#/components/parameters/X-Doug-Route' 
+        # header Correlation ID            
+        - $ref: '#/components/parameters/X-Correlation-ID'        
+
+    responses:
+        "201":  
+          $ref: '#/components/responses/201Created'
+          
+        '400':
+          $ref: '#/components/responses/400BadRequestError'
+                   
+        '401':
+          $ref: '#/components/responses/401UnauthorizedError'
+
+        '403':
+          $ref: '#/components/responses/403ForbiddenError'
+          
+        '404': 
+          $ref: '#/components/responses/404NotFoundError'
+           
+        '429':
+          $ref: '#/components/responses/429TooManyRequestsError'
+          
+        '500':
+          $ref: '#/components/responses/500InternalServerError'                
+
+  /mysms:    
+   post:
+    summary: Post operation to send preformatted SMS Messages.
+    description: Post operation to accept data to send preformatted SMS messages to multiple customers.
+    operationId: postPreformattedSMSMessage
+    tags:
+        - communications
+    requestBody:
+        description: A JSON object containing item data
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreformattedMessage'
+            example:
+              {
+                "eventDateTime": "2023-09-26T15:30:00",
+                "sourceSystem": "PEACE",
+                "smsMessages": [
+                  {
+                    "companyCode": "PEACE",
+                    "messageType": "Outage",
+                    "ignoreBlacklist": false,
+                    "phoneNumber": "0400123456",
+                    "smsID": "1025",
+                    "messageText": "Planned outage notification"
+                  },
+                  {
+                    "companyCode": "BASS",
+                    "messageType": "Emergency",
+                    "ignoreBlacklist": true,
+                    "smsID": "1050",
+                    "messageText": "Urgent safety alert"
+                  }
+                ]
+              }
+
+    parameters:
+        # header X-Doug-Route
+        - $ref: '#/components/parameters/X-Doug-Route' 
+        # header Correlation ID            
+        - $ref: '#/components/parameters/X-Correlation-ID'        
+
+    responses:
+        "202":  
+          $ref: '#/components/responses/202Accepted'
+          
+        '400':
+          $ref: '#/components/responses/400BadRequestError'
+                   
+        '401':
+          $ref: '#/components/responses/401UnauthorizedError'
+
+        '403':
+          $ref: '#/components/responses/403ForbiddenError'
+          
+        '404': 
+          $ref: '#/components/responses/404NotFoundError'
+           
+        '429':
+          $ref: '#/components/responses/429TooManyRequestsError'
+          
+        '500':
+          $ref: '#/components/responses/500InternalServerError'          
+ 
+components:
+
+  #Here are local schemas and examples that are specific to this API 
+  
+  schemas:
+    PremisesDetails:
+       type: object
+       description:  MARS data set 
+       required:
+        - Header
+        - Transactions
+       properties:     
+        Header:
+         type: object
+         description:  MARS Header data set         
+         required:
+            - MessageID
+            - TransactionsCount
+         properties:            
+            MessageID:
+              type: string
+              description: A unique identifier for transaction eg. business key, GUID etc            
+            TransactionsCount:
+              description: Number of transactions included in the XML document      
+              type: integer
+        nemi:
+          description: > 
+                  A nemi optionally including a checksum digit. 
+                  There are some complex rules officially embodied in the nemi procedure, however for simplicity and flexibility only the most basic format checks are applied here.
+          type: string
+          format: '([A-Z,0-9]{10})([A-Z,0-9]{1})?'
+          minLength: 10
+          maxLength: 11
+          example: 'QB123456789'
+          pattern: '^\d{3}-\d{2}-\d{4}$' #JM EXT
+        ref1:
+          $ref: 'https://api.swaggerhub.com/domains/Doug/Common/1.0.0#/components/schemas/nemi'
+        ref2:
+          $ref: 'document.json'
+        siteId:
+          type: number 
+          description: Also known as Premise Number
+          example: 123456
+
+        Transactions:
+          type: object
+          description:  MARS Transactions data set           
+          required:
+            - Transaction        
+          properties:
+            Transaction:
+              type: array          
+              items:
+                meters:
+                  type: array
+                  items:
+                    type: string  
+                  description: List of current Meter Numbers for that NMI. For detailed info about Services/Meters/Tariffs/PriceOptions call Get Meter API.
+                  example: ['23423', 'M2423', '75675']
+                $ref: '#/components/schemas/Transaction'
+              minItems: 1
+
+        nmiNetworkData:
+          description:  A schema for Network Data for the Portal to consume for a given NMI/Service Point(s)
+          type: object 
+          properties:
+            servicePoints:
+              type: array 
+              items:
+                type: object 
+                required:
+                - servicePointId
+                properties:
+                  servicePointId:
+                    type: string
+                  primary:
+                    type: boolean
+                    description: Is this is the primary service point?
+                    example: true
+    Transaction:
+       type: object
+       description:  Notifies of premises data changes in MARS or PEACE. 
+       required:
+        - AddressStructuredFlag        
+       properties:  
+          AddressStructured:
+            $ref: '#/components/schemas/AddressStructured'
+          AddressStructuredFlag:
+           type: string 
+           enum: [Y,N]          
+           
+    AddressStructured: 
+       type: object
+       description:  Structured Address for MARS        
+       properties: 
+        BuildingOrPropertyName:
+          type: string        
+        StreetName:  
+          type: string            
+        StreetSuffix:  
+          type: string           
+        StreetType:  
+          type: string   
+        tariffs:
+          type: array
+          items:
+            type: string
+          description: List of current Tariffs for that NMI. For detailed info about Services/Meters/Tariffs/PriceOptions call Get Meter API.
+          example: ['8400', '7200', '9900']  
+             
+  parameters:
+      # X-DOUG-Route header
+      X-DOUG-Route:
+          $ref: 'https://api.swaggerhub.com/domains/DOUG/Common/1.0.0#/components/parameters/X-DOUG-Route'
+      X-Correlation-ID:   
+            $ref: 'https://api.swaggerhub.com/domains/DOUG/Common/1.0.0#/components/parameters/X-Correlation-ID' 
+
+  responses:
+
+    201Created:  
+      $ref: 'https://api.swaggerhub.com/domains/DOUG/Common/1.0.0#/components/responses/201Created' 
+
+    202Accepted:
+      $ref: 'https://api.swaggerhub.com/domains/DOUG/Common/1.0.0#/components/responses/202Accepted'
+      
+    400BadRequestError:
+      $ref: 'https://api.swaggerhub.com/domains/DOUG/Common/1.0.0#/components/responses/400BadRequestError'
+
+    401UnauthorizedError:
+      $ref: 'https://api.swaggerhub.com/domains/DOUG/Common/1.0.0#/components/responses/401UnauthorizedError'
+
+    403ForbiddenError:
+      $ref: 'https://api.swaggerhub.com/domains/DOUG/Common/1.0.0#/components/responses/403ForbiddenError'
+
+    404NotFoundError:
+      $ref: 'https://api.swaggerhub.com/domains/DOUG/Common/1.0.0#/components/responses/404NotFoundError'
+
+    429TooManyRequestsError:
+      $ref: 'https://api.swaggerhub.com/domains/DOUG/Common/1.0.0#/components/responses/429TooManyRequestsError'
+
+    500InternalServerError:
+      $ref: 'https://api.swaggerhub.com/domains/DOUG/Common/1.0.0#/components/responses/500InternalServerError'
+
+  examples:
+  
+    CustomerCrewWorkStatusAlertRequestExample:
+      summary: Crew Alert Request
+      description: An Example of a couple SMS requested to be sent via a telecom provider 
+      value:  {
+                "eventDateTime": "2023-02-10T04:06:28Z",
+                "source": "FFA",
+                "NMI": "3044355564",
+                "crewEnroute": {
+                  "mobilePhone": "0412345567",
+                  "workorderNumber": 41527043,
+                  "enrouteStatus": "SUSPENDED"
+                }
+              }
+
+    CustomerOutageAlertRequestExample:
+      summary: Outage Alert Request
+      description: An Example of an outage SMS requested to be sent via a telecom provider 
+      value:  {  
+                "eventDateTime": "2023-02-10T04:06:28Z",
+                "extractionDateTime": "2023-02-10T04:06:28Z",
+                "nmis": ["3044355564", "QB123456789"],
+                "outage": {
+                  "outageDuration": "04:52:00.000000",
+                  "outageStart": "2023-02-10T08:00:00+10:00",
+                  "outageEnd": "2023-02-10T12:52:00+10:00",
+                  "outageName": "INCD-649435-g",
+                  "outageStatus": "OFF",
+                  "source": "POWERON",
+                  "typeOfMessage": "PLANNED"
+                }
+              }
+              
+  headers:
+    Last-Modified:
+      $ref: 'https://api.swaggerhub.com/domains/DOUG/Common/1.0.0#/components/headers/Last-Modified'
+
+    Cache-Control:
+      $ref: 'https://api.swaggerhub.com/domains/DOUG/Common/1.0.0#/components/headers/Cache-Control' 
+      
+    Date:
+      $ref: 'https://api.swaggerhub.com/domains/DOUG/Common/1.0.0#/components/headers/Date'
+
+    Expires:
+      $ref: 'https://api.swaggerhub.com/domains/DOUG/Common/1.0.0#/components/headers/Expires' 
+    
+    Content-Length:
+      $ref: 'https://api.swaggerhub.com/domains/DOUG/Common/1.0.0#/components/headers/Content-Length'
+      
+    X-Correlation-ID:   
+      $ref: 'https://api.swaggerhub.com/domains/DOUG/Common/1.0.0#/components/headers/X-Correlation-ID'
+
+    X-RateLimit-Limit:
+      $ref: "https://api.swaggerhub.com/domains/DOUG/Common/1.0.0#/components/headers/X-RateLimit-Limit"
+    
+    X-RateLimit-Remaining:
+      $ref: "https://api.swaggerhub.com/domains/DOUG/Common/1.0.0#/components/headers/X-RateLimit-Remaining"
+    
+    Retry-After:
+      $ref: "https://api.swaggerhub.com/domains/DOUG/Common/1.0.0#/components/headers/Retry-After"      
+
+  # Security Schemes
+  # Indicate to the consumers that security is being applied, but this is not going to be used by Azure APIM as that happens via Terraform.
+  securitySchemes:
+    implicit:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'http://example.com/oauth/auth'
+          scopes:
+            write: allows modifying resources
+            read: allows reading resources

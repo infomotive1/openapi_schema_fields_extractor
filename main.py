@@ -6,11 +6,11 @@ from io import StringIO
 
 INPUT_DIR = '.\\input\\'
 OUTPUT_DIR = '.\\output\\'
-LOG_FILE = '.log'
-log_contents = []
+# LOG_FILE = '.log'
+# log_contents = []
 
-WRITE_LOG = True
-PRINT_TO_TERMINAL = True
+# WRITE_LOG = True
+PRINT_TO_TERMINAL = False
 
 # def custom_boolean_resolver(self, node):
 #     # Return True for any input
@@ -18,6 +18,8 @@ PRINT_TO_TERMINAL = True
 
 # # Register the custom resolver
 # yaml.resolver.BaseResolver.yaml_implicit_resolvers['tag:yaml.org,2002:bool'] = [custom_boolean_resolver]
+
+
 
 
 def get_components_schemas(spec_data):
@@ -65,8 +67,7 @@ def remove_reference_sources(resolved_data, refs_encountered):
 # Extract schema properties (ie. data fields), format, return property and its attributes
 def extract_fields_from_schema(schema, components, parent_name=''):
     fields = []
-    print(f'\nschema: {schema}')
-
+    if PRINT_TO_TERMINAL: print(f'\nschema: {schema}')
     if 'properties' in schema:
         required_properties = schema.get('required', [])
         for property_name, attributes in schema['properties'].items():
@@ -82,7 +83,7 @@ def extract_fields_from_schema(schema, components, parent_name=''):
                 if 'enum' in attributes:
                     # enum_values = ', '.join(attributes['enum']) # to string for values that may be keywords
                     format_value += (", " if format_value else "") + (f'enum{attributes["enum"]}')
-                    print(format_value)
+                    if PRINT_TO_TERMINAL: print(format_value)
                 if 'minLength' in attributes:
                     min_length_value = str(attributes['minLength'])
                     format_value += (", " if format_value else "") + f'minLength={min_length_value}'
@@ -167,23 +168,16 @@ def format_as_csv(fields):
 # Function to write the CSV fields rows to file
 def write_csv_to_file(fields, csv_output_file):
     csv_output_file = csv_output_file + '.csv'
-    
-# try:
-#     with open('example.txt', 'w') as file:
-#         file.write("Hello, world!\n")
-# except PermissionError:
-#     print("You don't have permission to write to the file.")
-# except IOError:
-#     print("An I/O error occurred while writing to the file.")
-# except Exception as e:
-#     print(f"An error occurred: {e}")
+    try:
+        with open(csv_output_file, 'w', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fields[0].keys())
+            writer.writeheader()
+            for field in fields:
+                writer.writerow(field)
+        print(f"Data written to {csv_output_file}")
+    except Exception as e:
+       print(f"Error writing to file: {e}")
 
-    with open(csv_output_file, 'w', newline='') as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=fields[0].keys())
-        writer.writeheader()
-        for field in fields:
-            writer.writerow(field)
-    print(f"Data written to {csv_output_file}")
 
 # class to set the alias pointers to not be included in YAML dump
 class NoAliasDumper(yaml.Dumper):
@@ -191,12 +185,24 @@ class NoAliasDumper(yaml.Dumper):
         return True
 
 
+def get_paths(spec_data):
+    if "paths" in spec_data:
+        return {'paths': spec_data["paths"]}
+    else:
+        return 0
+
+def get_paths_responses(paths_responses_spec_data):
+    if "responses" in paths_responses_spec_data:
+        return {'responses': paths_responses_spec_data['responses']}
+    else:
+        return 0
+
 ############################################################################################
 ############################################################################################
 
 
 # The OpenApi specification YAML file to extract the properties/fields from.
-filename = 'EQL-nmi-aws-system-1.0.0-swagger - pre-resolved.yaml'
+filename = 'EQL-aws-search-system-1.0.0-swagger - inverters only.yaml'
 # filename = 'EQL-portal-services-1.1.0-swagger-pre-resolved - extended defs.yaml'
 # test_spec_1.yaml Outage-1.0.0-swagger petstore simple2 EQL-portal-services-1.1.0-swagger
 
@@ -206,29 +212,37 @@ filename = 'EQL-nmi-aws-system-1.0.0-swagger - pre-resolved.yaml'
 # log_file = f'{filename}-log.txt'
 # log_entries = []
 
-
+print(f'Processing file: {INPUT_DIR}{filename}')
 # Load both Swagger specification and data from a single file
 with open(INPUT_DIR + filename, 'r') as data_file:
     data = yaml.safe_load(data_file)
 
 # Get the schemas
-data = get_components_schemas(data)
+schema_data = get_components_schemas(data)
 
 # Create a set to track the found inline references
 refs_encountered = set()
 
+print(f'Resolving references ...')
 # Resolve the references
-resolved_data = resolve_references(data, data)
+resolved_data = resolve_references(schema_data, schema_data)
 
 # Remove the sources of references
 resolved_data_clean = remove_reference_sources(resolved_data, refs_encountered)
 
-# Write the resolved schema components to file as YAML
-with open('resolved_swagger.yaml', 'w') as resolved_file:
-    yaml.dump(resolved_data_clean, resolved_file, default_flow_style=False, sort_keys=False, Dumper=NoAliasDumper)
+# paths_data = get_paths(data)
+# for path in paths_data['paths']:
+#     for response_name, response_value in path['responses']['get']:
+#         print(response_name)
 
+# # Write the resolved schema components to file as YAML
+# with open(OUTPUT_DIR + filename, 'w') as resolved_file:
+#     yaml.dump(resolved_data_clean, resolved_file, default_flow_style=False, sort_keys=False, Dumper=NoAliasDumper)
+
+print(f'Extracting and formatting data ...')
 # extract the specification data fields and their properties and format as a tabular data specification
 fields = convert_schema_fields_to_matrix(resolved_data_clean['components'])
+
 
 # Create a CSV data filename
 csv_data = format_as_csv(fields)
